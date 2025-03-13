@@ -37,6 +37,81 @@ func (d *directed[K, T]) AddVertex(value T, options ...func(*VertexProperties)) 
 	return d.store.AddVertex(hash, value, properties)
 }
 
+func (d *directed[K, T]) UpdateVertex(existingHash K, value T, options ...func(*VertexProperties)) error {
+	// Check old exists
+	if _, err := d.Vertex(existingHash); err != nil {
+		return err
+	}
+
+	// If changing hash, check new doesn't exist
+	newHash := d.hash(value)
+	if existingHash != newHash {
+		_, err := d.Vertex(newHash)
+		if !errors.Is(err, ErrVertexNotFound) {
+			return ErrVertexAlreadyExists
+		}
+	}
+
+	// Remove old edges to/from old
+	adjacencyMap, err := d.AdjacencyMap()
+	if err != nil {
+		return err
+	}
+	outEdges := adjacencyMap[existingHash]
+	predecessorMap, err := d.PredecessorMap()
+	if err != nil {
+		return err
+	}
+	inEdges := predecessorMap[existingHash]
+
+	for _, edge := range outEdges {
+		err = d.RemoveEdge(edge.Source, edge.Target)
+		if err != nil {
+			return err
+		}
+	}
+	for _, edge := range inEdges {
+		err = d.RemoveEdge(edge.Source, edge.Target)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Replace vertex
+	if err := d.RemoveVertex(existingHash); err != nil {
+		return err
+	}
+	if err := d.AddVertex(value, options...); err != nil {
+		return err
+	}
+
+	// Add new edges, preserving properties
+	for _, edge := range outEdges {
+		edge := Edge[K]{
+			Source:     newHash,
+			Target:     edge.Target,
+			Properties: edge.Properties,
+		}
+
+		if err := d.addEdge(edge.Source, edge.Target, edge); err != nil {
+			return err
+		}
+	}
+	for _, edge := range inEdges {
+		edge := Edge[K]{
+			Source:     edge.Source,
+			Target:     newHash,
+			Properties: edge.Properties,
+		}
+
+		if err := d.addEdge(edge.Source, edge.Target, edge); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (d *directed[K, T]) AddVerticesFrom(g Graph[K, T]) error {
 	adjacencyMap, err := g.AdjacencyMap()
 	if err != nil {

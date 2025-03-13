@@ -38,6 +38,10 @@ func (u *undirected[K, T]) AddVertex(value T, options ...func(*VertexProperties)
 	return u.store.AddVertex(hash, value, prop)
 }
 
+func (u *undirected[K, T]) UpdateVertex(existingHash K, value T, options ...func(*VertexProperties)) error {
+	return fmt.Errorf("UpdateVertex not implemented for undirected graphs (didn't bother copying directed implementaiton)")
+}
+
 func (u *undirected[K, T]) Vertex(hash K) (T, error) {
 	vertex, _, err := u.store.Vertex(hash)
 	return vertex, err

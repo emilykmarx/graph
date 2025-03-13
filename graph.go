@@ -77,6 +77,12 @@ type Graph[K comparable, T any] interface {
 	//
 	AddVertex(value T, options ...func(*VertexProperties)) error
 
+	// UpdateVertex updates an existing vertex in the graph. Edge properties are preserved,
+	// but properties for the updated vertex must be passed in. If the vertex doesn't
+	// exist in the graph, ErrVertexNotFound will be returned.
+	// Likely not thread-safe.
+	UpdateVertex(hash K, value T, options ...func(*VertexProperties)) error
+
 	// AddVerticesFrom adds all vertices along with their properties from the
 	// given graph to the receiving graph.
 	//
