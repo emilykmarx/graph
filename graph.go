@@ -58,6 +58,7 @@ var (
 	ErrEdgeAlreadyExists   = errors.New("edge already exists")
 	ErrEdgeCreatesCycle    = errors.New("edge would create a cycle")
 	ErrVertexHasEdges      = errors.New("vertex has edges")
+	ErrCycleFound          = errors.New("cycle found")
 )
 
 // Graph represents a generic graph data structure consisting of vertices of

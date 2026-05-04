@@ -1,18 +1,52 @@
 package graph
 
 import (
+	"errors"
 	"log"
+	"reflect"
 	"testing"
 )
 
 func TestDirectedDFS(t *testing.T) {
-	tests := map[string]struct {
+	type test struct {
 		vertices       []int
 		edges          []Edge[int]
 		startHash      int
-		expectedVisits []int
-		stopAtVertex   int
-	}{
+		expectedVisits [][]int // any are acceptable
+		stopAtVertex   int     // tests stopping early due to the visit function
+	}
+	cycle := test{
+		vertices: []int{1, 2, 3},
+		edges: []Edge[int]{
+			{Source: 1, Target: 2},
+			{Source: 2, Target: 3},
+			{Source: 3, Target: 1},
+		},
+		startHash:      1,
+		expectedVisits: [][]int{{1, 2, 3}},
+		stopAtVertex:   -1,
+	}
+	cycle_testname := "traverse entire directed graph with cycle"
+	cycle_stop_early := cycle
+	cycle_stop_early.stopAtVertex = 2
+	cycle_stop_early.expectedVisits = [][]int{{1, 2}}
+
+	diamond_testname := "traverse directed graph with a node reachable by two paths (no cycles though)"
+	diamond := test{
+		vertices: []int{1, 2, 3, 4},
+		edges: []Edge[int]{
+			{Source: 1, Target: 2},
+			{Source: 1, Target: 3},
+			{Source: 2, Target: 4},
+			{Source: 3, Target: 4},
+		},
+		startHash: 1,
+		// 4 is reachable by 2 paths - if `all_paths`: should be visited twice (in either order)
+		expectedVisits: [][]int{{1, 2, 4, 3, 4}, {1, 3, 4, 2, 4}},
+		stopAtVertex:   -1,
+	}
+
+	tests := map[string]test{
 		"traverse entire directed graph with 3 vertices": {
 			vertices: []int{1, 2, 3},
 			edges: []Edge[int]{
@@ -20,31 +54,11 @@ func TestDirectedDFS(t *testing.T) {
 				{Source: 1, Target: 3},
 			},
 			startHash:      1,
-			expectedVisits: []int{1, 2, 3},
+			expectedVisits: [][]int{{1, 2, 3}, {1, 3, 2}}, // visit direct children in either order
 			stopAtVertex:   -1,
 		},
-		"traverse entire directed triangle graph": {
-			vertices: []int{1, 2, 3},
-			edges: []Edge[int]{
-				{Source: 1, Target: 2},
-				{Source: 2, Target: 3},
-				{Source: 3, Target: 1},
-			},
-			startHash:      1,
-			expectedVisits: []int{1, 2, 3},
-			stopAtVertex:   -1,
-		},
-		"traverse directed graph with 3 vertices until vertex 2": {
-			vertices: []int{1, 2, 3},
-			edges: []Edge[int]{
-				{Source: 1, Target: 2},
-				{Source: 2, Target: 3},
-				{Source: 3, Target: 1},
-			},
-			startHash:      1,
-			expectedVisits: []int{1, 2},
-			stopAtVertex:   2,
-		},
+		cycle_testname: cycle,
+		"traverse directed graph with cycle stopping early due to visit func": cycle_stop_early,
 		"traverse a disconnected directed graph": {
 			vertices: []int{1, 2, 3, 4},
 			edges: []Edge[int]{
@@ -52,46 +66,66 @@ func TestDirectedDFS(t *testing.T) {
 				{Source: 3, Target: 4},
 			},
 			startHash:      1,
-			expectedVisits: []int{1, 2},
+			expectedVisits: [][]int{{1, 2}},
 			stopAtVertex:   -1,
 		},
+		diamond_testname: diamond,
 	}
 
-	for name, test := range tests {
-		graph := New(IntHash, Directed())
+	for _, all_paths := range []bool{false, true} {
+		for name, test := range tests {
+			graph := New(IntHash, Directed())
 
-		for _, vertex := range test.vertices {
-			_ = graph.AddVertex(vertex)
-		}
-
-		for _, edge := range test.edges {
-			if err := graph.AddEdge(edge.Source, edge.Target); err != nil {
-				t.Fatalf("%s: failed to add edge: %s", name, err.Error())
+			for _, vertex := range test.vertices {
+				_ = graph.AddVertex(vertex)
 			}
-		}
 
-		visited := make(map[int]struct{})
-
-		visit := func(value int) bool {
-			visited[value] = struct{}{}
-
-			if test.stopAtVertex != -1 {
-				if value == test.stopAtVertex {
-					return true
+			for _, edge := range test.edges {
+				if err := graph.AddEdge(edge.Source, edge.Target); err != nil {
+					t.Fatalf("%s: failed to add edge: %s", name, err.Error())
 				}
 			}
-			return false
-		}
 
-		_ = DFS(graph, test.startHash, visit)
+			visited := []int{}
 
-		if len(visited) != len(test.expectedVisits) {
-			t.Fatalf("%s: numbers of visited vertices don't match: expected %v, got %v", name, len(test.expectedVisits), len(visited))
-		}
+			visit := func(value int) bool {
+				visited = append(visited, value)
 
-		for _, expectedVisit := range test.expectedVisits {
-			if _, ok := visited[expectedVisit]; !ok {
-				t.Errorf("%s: expected vertex %v to be visited, but it isn't", name, expectedVisit)
+				if test.stopAtVertex != -1 {
+					if value == test.stopAtVertex {
+						return true // should stop visiting
+					}
+				}
+				return false
+			}
+
+			if (name == diamond_testname) && !all_paths {
+				// If !all_paths: Only visit 4 on one path
+				test.expectedVisits = [][]int{{1, 2, 4, 3}, {1, 3, 4, 2}}
+			}
+			dfs_err := DFS(graph, test.startHash, visit, all_paths)
+
+			// 1. Check nodes visited
+			visit_ok := false
+			for _, expected_visit := range test.expectedVisits {
+				if reflect.DeepEqual(visited, expected_visit) {
+					visit_ok = true
+					break
+				}
+			}
+			if !visit_ok {
+				t.Errorf("%s: expected one of these visit sequences: %v, got %v", name, test.expectedVisits, visited)
+			}
+
+			// 2. Check error
+			if (name == cycle_testname) && all_paths {
+				if !errors.Is(dfs_err, ErrCycleFound) {
+					t.Fatalf("%s: cycle not detected - instead, error was: %v", name, dfs_err)
+				}
+			} else {
+				if dfs_err != nil {
+					t.Fatalf("%s: Unexpected DFS error: %v", name, dfs_err)
+				}
 			}
 		}
 	}
@@ -221,7 +255,7 @@ func TestUndirectedDFS(t *testing.T) {
 			return false
 		}
 
-		_ = DFS(graph, test.startHash, visit)
+		_ = DFS(graph, test.startHash, visit, false)
 
 		if len(visited) < len(test.expectedMinimumVisits) {
 			t.Fatalf("%s: expected number of minimum visits doesn't match: expected %v, got %v", name, len(test.expectedMinimumVisits), len(visited))

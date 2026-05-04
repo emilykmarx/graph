@@ -32,7 +32,10 @@ import "fmt"
 //	}
 //
 // DFS is non-recursive and maintains a stack instead.
-func DFS[K comparable, T any](g Graph[K, T], start K, visit func(K) bool) error {
+// If `all_paths`: Visit all paths (meaning nodes reachable via multiple paths will be visited multiple times),
+// stopping only if there is a cycle.
+// If `all_paths` and a cycle is found: visit all paths but return error
+func DFS[K comparable, T any](g Graph[K, T], start K, visit func(K) bool, all_paths bool) error {
 	adjacencyMap, err := g.AdjacencyMap()
 	if err != nil {
 		return fmt.Errorf("could not get adjacency map: %w", err)
@@ -44,23 +47,48 @@ func DFS[K comparable, T any](g Graph[K, T], start K, visit func(K) bool) error 
 
 	stack := newStack[K]()
 	visited := make(map[K]bool)
+	// Nodes visited on the current path
+	visited_path := make(map[K]bool)
+	cycle := false
 
 	stack.push(start)
 
 	for !stack.isEmpty() {
 		currentHash, _ := stack.pop()
 
-		if _, ok := visited[currentHash]; !ok {
+		_, visited_ever := visited[currentHash]
+		_, visited_on_path := visited_path[currentHash]
+		should_visit := !visited_ever
+		if all_paths {
+			should_visit = !visited_on_path
+			if !should_visit {
+				// Already visited this node on this path => cycle
+				cycle = true
+			}
+		}
+
+		if should_visit {
 			// Stop traversing the graph if the visit function returns true.
 			if stop := visit(currentHash); stop {
 				break
 			}
 			visited[currentHash] = true
+			visited_path[currentHash] = true
 
+			leaf := true
 			for adjacency := range adjacencyMap[currentHash] {
 				stack.push(adjacency)
+				leaf = false // has outgoing edge
+			}
+			if leaf {
+				// End of path
+				visited_path = make(map[K]bool)
 			}
 		}
+	}
+
+	if cycle {
+		return ErrCycleFound
 	}
 
 	return nil
