@@ -34,8 +34,9 @@ import "fmt"
 // DFS is non-recursive and maintains a stack instead.
 // If `all_paths`: Visit all paths (meaning nodes reachable via multiple paths will be visited multiple times),
 // stopping only if there is a cycle.
-// If `all_paths` and a cycle is found: visit all paths but return error
-func DFS[K comparable, T any](g Graph[K, T], start K, visit func(K) bool, all_paths bool) error {
+// If `all_paths` and a cycle is found: visit all paths but return error.
+// If `pretty_print`: print tabs indicating level of tree (before calling visit)
+func DFS[K comparable, T any](g Graph[K, T], start K, visit func(K) bool, all_paths bool, pretty_print bool) error {
 	adjacencyMap, err := g.AdjacencyMap()
 	if err != nil {
 		return fmt.Errorf("could not get adjacency map: %w", err)
@@ -45,16 +46,22 @@ func DFS[K comparable, T any](g Graph[K, T], start K, visit func(K) bool, all_pa
 		return fmt.Errorf("could not find start vertex with hash %v", start)
 	}
 
-	stack := newStack[K]()
+	type stackNode struct {
+		hash         K
+		indent_level int
+	}
+	stack := newStack[stackNode]()
 	visited := make(map[K]bool)
 	// Nodes visited on the current path
 	visited_path := make(map[K]bool)
 	cycle := false
 
-	stack.push(start)
+	stack.push(stackNode{hash: start})
 
 	for !stack.isEmpty() {
-		currentHash, _ := stack.pop()
+		cur, _ := stack.pop()
+		currentHash := cur.hash
+		indent_level := cur.indent_level
 
 		_, visited_ever := visited[currentHash]
 		_, visited_on_path := visited_path[currentHash]
@@ -68,6 +75,12 @@ func DFS[K comparable, T any](g Graph[K, T], start K, visit func(K) bool, all_pa
 		}
 
 		if should_visit {
+			if pretty_print {
+				for i := 0; i < indent_level; i++ {
+					fmt.Printf("\t")
+				}
+			}
+
 			// Stop traversing the graph if the visit function returns true.
 			if stop := visit(currentHash); stop {
 				break
@@ -77,8 +90,8 @@ func DFS[K comparable, T any](g Graph[K, T], start K, visit func(K) bool, all_pa
 
 			leaf := true
 			for adjacency := range adjacencyMap[currentHash] {
-				stack.push(adjacency)
-				leaf = false // has outgoing edge
+				stack.push(stackNode{hash: adjacency, indent_level: indent_level + 1}) // indent children by one more
+				leaf = false                                                           // has outgoing edge
 			}
 			if leaf {
 				// End of path

@@ -103,7 +103,7 @@ func TestDirectedDFS(t *testing.T) {
 				// If !all_paths: Only visit 4 on one path
 				test.expectedVisits = [][]int{{1, 2, 4, 3}, {1, 3, 4, 2}}
 			}
-			dfs_err := DFS(graph, test.startHash, visit, all_paths)
+			dfs_err := DFS(graph, test.startHash, visit, all_paths, false)
 
 			// 1. Check nodes visited
 			visit_ok := false
@@ -255,7 +255,7 @@ func TestUndirectedDFS(t *testing.T) {
 			return false
 		}
 
-		_ = DFS(graph, test.startHash, visit, false)
+		_ = DFS(graph, test.startHash, visit, false, false)
 
 		if len(visited) < len(test.expectedMinimumVisits) {
 			t.Fatalf("%s: expected number of minimum visits doesn't match: expected %v, got %v", name, len(test.expectedMinimumVisits), len(visited))
