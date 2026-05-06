@@ -82,7 +82,10 @@ func (d *directed[K, T]) UpdateVertex(existingHash K, value T, options ...func(*
 		return err
 	}
 	if err := d.AddVertex(value, options...); err != nil {
-		return err
+		// Vertex will already "exist" if not changing hash - ok
+		if !errors.Is(err, ErrVertexAlreadyExists) {
+			return err
+		}
 	}
 
 	// Add new edges, preserving properties

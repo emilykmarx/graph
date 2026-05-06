@@ -4,18 +4,134 @@ import (
 	"errors"
 	"log"
 	"reflect"
+	"sort"
+	"strings"
 	"testing"
 )
 
-func TestDirectedDFS(t *testing.T) {
-	type test struct {
-		vertices       []int
-		edges          []Edge[int]
-		startHash      int
-		expectedVisits [][]int // any are acceptable
-		stopAtVertex   int     // tests stopping early due to the visit function
+type testdirected struct {
+	vertices       []int
+	edges          []Edge[int]
+	startHash      int
+	expectedVisits [][]int // any are acceptable
+	stopAtVertex   int     // tests stopping early due to the visit function
+}
+
+func directedGraph(t *testing.T, test_name string, test testdirected) Graph[int, int] {
+	graph := New(IntHash, Directed())
+
+	for _, vertex := range test.vertices {
+		_ = graph.AddVertex(vertex)
 	}
-	cycle := test{
+
+	for _, edge := range test.edges {
+		if err := graph.AddEdge(edge.Source, edge.Target); err != nil {
+			t.Fatalf("%s: failed to add edge: %s", test_name, err.Error())
+		}
+	}
+	return graph
+}
+
+// Hash is last character
+func Postfix(v string) string {
+	return string(v[len(v)-1])
+}
+
+// Other tests already check order - just check values (forwards, from all roots)
+// (Takes multiple possible expected for tests where result could depend both on order visited in original DFS, and order visited here)
+func checkVertexValues(t *testing.T, test_name string, graph Graph[string, string], expected_new_nodes [][]string) {
+	visited := []string{}
+	err := DFSAllStartingNodes(graph, func(hash string) bool {
+		n, _ := graph.Vertex(hash)
+		visited = append(visited, n)
+		return false
+	}, UpdatePathVertices[string]{}, false, false, false)
+
+	if err != nil {
+		t.Errorf("%s: DFS to check vertices - %v", test_name, err.Error())
+	}
+
+	sort.Strings(visited)
+
+	visit_ok := false
+	for _, expected_visit := range expected_new_nodes {
+		sort.Strings(expected_visit)
+		if reflect.DeepEqual(visited, expected_visit) {
+			visit_ok = true
+			break
+		}
+	}
+	if !visit_ok {
+		t.Errorf("%s: expected one of these visit sequences: %v, got %v", test_name, expected_new_nodes, visited)
+	}
+}
+
+// Also tests DFS backwards and DFSAllStartingNodes
+func TestDFSUpdatePathVertices(t *testing.T) {
+	graph := New(Postfix, Directed())
+
+	test_name := "DFS path info accumulation, backwards, and all starting nodes"
+	// Paths: a => b => c => e, a => b => d
+	vertices := []string{"a", "b", "c", "e", "d"}
+
+	for i, _ := range vertices {
+		if i < len(vertices)-1 {
+			_ = graph.AddVertex(vertices[i])
+			_ = graph.AddVertex(vertices[i+1])
+		}
+		if i < len(vertices)-2 {
+			if err := graph.AddEdge(vertices[i], vertices[i+1]); err != nil {
+				t.Fatalf("%s: failed to add edge: %s", test_name, err.Error())
+			}
+		}
+	}
+	if err := graph.AddEdge(vertices[1], vertices[4]); err != nil {
+		t.Fatalf("%s: failed to add edge: %s", test_name, err.Error())
+	}
+
+	// 1. PUSH DOWN
+	UpdateChild := func(parent, child string) string {
+		// keep child hash (last char) the same
+		return parent + "." + child
+	}
+	update_vertices := UpdatePathVertices[string]{
+		UpdateChild: &UpdateChild,
+	}
+	err := DFSAllStartingNodes(graph, func(i string) bool { return false }, update_vertices, true, false, false) // forwards
+	if err != nil {
+		t.Fatalf("%s: Unexpected error from DFS to push info up: %v", test_name, err)
+	}
+
+	expected_new_nodes_pushdown := [][]string{{"a", "a.b", "a.b.c", "a.b.c.e", "a.b.d"}}
+	checkVertexValues(t, test_name, graph, expected_new_nodes_pushdown)
+
+	// 2. PUSH UP
+	UpdateParent := func(parent, child string) string {
+		// keep parent hash (last char) the same
+		full_path := strings.Split(child, "-")[0] // This will always be the full path as we go up
+		// <full path>-<orig hash>
+		return full_path + "-" + Postfix(parent)
+	}
+	update_vertices = UpdatePathVertices[string]{
+		UpdateParent: &UpdateParent,
+	}
+	err = DFSAllStartingNodes(graph, func(i string) bool { return false }, update_vertices, true, false, true) // backwards
+	if err != nil {
+		t.Fatalf("%s: Unexpected error from DFS to push info down: %v", test_name, err)
+	}
+
+	// B has two children, so whichever path is executed second overwrites the first in B and A
+	expected_new_nodes_pushup := [][]string{
+		// b<=d first so e=>c=>b=>a wins
+		{"a.b.d" /* visit B and A here, but will be overwritten */, "a.b.c.e", "a.b.c.e-c", "a.b.c.e-b", "a.b.c.e-a"},
+		// e=>c=>b=>a first, so b=>d wins
+		{"a.b.c.e", "a.b.c.e-c" /* visit B and A here, but will be overwritten */, "a.b.d", "a.b.d-b", "a.b.d-a"},
+	}
+	checkVertexValues(t, test_name, graph, expected_new_nodes_pushup)
+}
+
+func TestDirectedDFS(t *testing.T) {
+	cycle := testdirected{
 		vertices: []int{1, 2, 3},
 		edges: []Edge[int]{
 			{Source: 1, Target: 2},
@@ -32,7 +148,7 @@ func TestDirectedDFS(t *testing.T) {
 	cycle_stop_early.expectedVisits = [][]int{{1, 2}}
 
 	diamond_testname := "traverse directed graph with a node reachable by two paths (no cycles though)"
-	diamond := test{
+	diamond := testdirected{
 		vertices: []int{1, 2, 3, 4},
 		edges: []Edge[int]{
 			{Source: 1, Target: 2},
@@ -46,7 +162,7 @@ func TestDirectedDFS(t *testing.T) {
 		stopAtVertex:   -1,
 	}
 
-	tests := map[string]test{
+	tests := map[string]testdirected{
 		"traverse entire directed graph with 3 vertices": {
 			vertices: []int{1, 2, 3},
 			edges: []Edge[int]{
@@ -74,18 +190,7 @@ func TestDirectedDFS(t *testing.T) {
 
 	for _, all_paths := range []bool{false, true} {
 		for name, test := range tests {
-			graph := New(IntHash, Directed())
-
-			for _, vertex := range test.vertices {
-				_ = graph.AddVertex(vertex)
-			}
-
-			for _, edge := range test.edges {
-				if err := graph.AddEdge(edge.Source, edge.Target); err != nil {
-					t.Fatalf("%s: failed to add edge: %s", name, err.Error())
-				}
-			}
-
+			graph := directedGraph(t, name, test)
 			visited := []int{}
 
 			visit := func(value int) bool {
@@ -103,7 +208,7 @@ func TestDirectedDFS(t *testing.T) {
 				// If !all_paths: Only visit 4 on one path
 				test.expectedVisits = [][]int{{1, 2, 4, 3}, {1, 3, 4, 2}}
 			}
-			dfs_err := DFS(graph, test.startHash, visit, all_paths, false)
+			dfs_err := DFS(graph, test.startHash, visit, UpdatePathVertices[int]{}, all_paths, false, false)
 
 			// 1. Check nodes visited
 			visit_ok := false
@@ -255,7 +360,10 @@ func TestUndirectedDFS(t *testing.T) {
 			return false
 		}
 
-		_ = DFS(graph, test.startHash, visit, false, false)
+		err := DFS(graph, test.startHash, visit, UpdatePathVertices[int]{}, false, false, false)
+		if err != nil {
+			t.Fatalf("%s: Unexpected error from DFS: %v", name, err)
+		}
 
 		if len(visited) < len(test.expectedMinimumVisits) {
 			t.Fatalf("%s: expected number of minimum visits doesn't match: expected %v, got %v", name, len(test.expectedMinimumVisits), len(visited))
