@@ -45,7 +45,7 @@ func checkVertexValues(t *testing.T, test_name string, graph Graph[string, strin
 		n, _ := graph.Vertex(hash)
 		visited = append(visited, n)
 		return false
-	}, UpdatePathVertices[string]{}, false, false, false)
+	}, UpdatePathVertices[string]{}, false, false, Forwards)
 
 	if err != nil {
 		t.Errorf("%s: DFS to check vertices - %v", test_name, err.Error())
@@ -97,7 +97,7 @@ func TestDFSUpdatePathVertices(t *testing.T) {
 	update_vertices := UpdatePathVertices[string]{
 		UpdateChild: &UpdateChild,
 	}
-	err := DFSAllStartingNodes(graph, func(i string) bool { return false }, update_vertices, true, false, false) // forwards
+	err := DFSAllStartingNodes(graph, func(i string) bool { return false }, update_vertices, true, false, Forwards)
 	if err != nil {
 		t.Fatalf("%s: Unexpected error from DFS to push info up: %v", test_name, err)
 	}
@@ -115,7 +115,7 @@ func TestDFSUpdatePathVertices(t *testing.T) {
 	update_vertices = UpdatePathVertices[string]{
 		UpdateParent: &UpdateParent,
 	}
-	err = DFSAllStartingNodes(graph, func(i string) bool { return false }, update_vertices, true, false, true) // backwards
+	err = DFSAllStartingNodes(graph, func(i string) bool { return false }, update_vertices, true, false, Backwards)
 	if err != nil {
 		t.Fatalf("%s: Unexpected error from DFS to push info down: %v", test_name, err)
 	}
@@ -208,7 +208,7 @@ func TestDirectedDFS(t *testing.T) {
 				// If !all_paths: Only visit 4 on one path
 				test.expectedVisits = [][]int{{1, 2, 4, 3}, {1, 3, 4, 2}}
 			}
-			dfs_err := DFS(graph, test.startHash, visit, UpdatePathVertices[int]{}, all_paths, false, false)
+			dfs_err := DFS(graph, test.startHash, visit, UpdatePathVertices[int]{}, all_paths, false, Forwards)
 
 			// 1. Check nodes visited
 			visit_ok := false
@@ -360,7 +360,7 @@ func TestUndirectedDFS(t *testing.T) {
 			return false
 		}
 
-		err := DFS(graph, test.startHash, visit, UpdatePathVertices[int]{}, false, false, false)
+		err := DFS(graph, test.startHash, visit, UpdatePathVertices[int]{}, false, false, Forwards)
 		if err != nil {
 			t.Fatalf("%s: Unexpected error from DFS: %v", name, err)
 		}
