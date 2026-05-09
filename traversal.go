@@ -129,11 +129,11 @@ func DFS[K comparable, T any](g Graph[K, T], start K, visit func(K) bool, update
 // could support by having UpdateVertex take an adjacency/predecessor map to update)
 type UpdatePathVertices[NodeT any] struct {
 	// Graph has edge `parent` => `child`.
-	// Both are called when pushing a neighbor -
+	// Both are called when pushing a neighbor; UpdateParent is called first, then UpdateChild is called with the updated parent.
 	// If forwards DFS: just visited a parent and pushing its child
 	// If backwards DFS: just visited a child and pushing its parent
-	UpdateChild  *func(parent NodeT, child NodeT) NodeT
 	UpdateParent *func(parent NodeT, child NodeT) NodeT
+	UpdateChild  *func(parent NodeT, child NodeT) NodeT
 }
 
 func updatePathVertices[K comparable, NodeT any](g Graph[K, NodeT], currentHash K, neighHash K, update_vertices UpdatePathVertices[NodeT], backwards bool) error {
@@ -165,6 +165,18 @@ func updatePathVertices[K comparable, NodeT any](g Graph[K, NodeT], currentHash 
 		childHash = currentHash
 	}
 
+	if update_vertices.UpdateParent != nil {
+		parent = (*(update_vertices.UpdateParent))(parent, child)
+		newHash := directed.hash(parent)
+		if parentHash != newHash {
+			return fmt.Errorf("DFS can only update path vertex if hash stays the same - old %v != new %v", parentHash, newHash)
+		}
+		err = g.UpdateVertex(parentHash, parent, func(vp *VertexProperties) {})
+		if err != nil {
+			return err
+		}
+	}
+
 	if update_vertices.UpdateChild != nil {
 		new_node := (*(update_vertices.UpdateChild))(parent, child)
 		newHash := directed.hash(new_node)
@@ -172,17 +184,6 @@ func updatePathVertices[K comparable, NodeT any](g Graph[K, NodeT], currentHash 
 			return fmt.Errorf("DFS can only update path vertex if hash stays the same - old %v != new %v", childHash, newHash)
 		}
 		err = g.UpdateVertex(childHash, new_node, func(vp *VertexProperties) {})
-		if err != nil {
-			return err
-		}
-	}
-	if update_vertices.UpdateParent != nil {
-		new_node := (*(update_vertices.UpdateParent))(parent, child)
-		newHash := directed.hash(new_node)
-		if parentHash != newHash {
-			return fmt.Errorf("DFS can only update path vertex if hash stays the same - old %v != new %v", parentHash, newHash)
-		}
-		err = g.UpdateVertex(parentHash, new_node, func(vp *VertexProperties) {})
 		if err != nil {
 			return err
 		}
