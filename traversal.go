@@ -39,7 +39,7 @@ import (
 // If `all_paths` and a cycle is found: visit all paths but return error.
 // If `pretty_print`: print tabs indicating level of tree (before calling visit) - could be removed (caller can use update_vertices to do it themselves).
 // If backwards: visit in opposite order of edges.
-func DFS[K comparable, T any](g Graph[K, T], start K, visit func(K) bool, update_vertices UpdatePathVertices[T],
+func DFS[K comparable, T any](g Graph[K, T], start K, visit func(K) bool, update_vertices UpdatePathVertices[K, T],
 	all_paths bool, pretty_print bool, direction Direction) error {
 
 	var m map[K]map[K]Edge[K]
@@ -145,13 +145,13 @@ const (
 )
 
 // TODO add a test for UpdateFirst (current ones only pass one of UpdateParent/UpdateChild so doesn't matter)
-type UpdatePathVertices[NodeT any] struct {
+type UpdatePathVertices[K comparable, NodeT any] struct {
 	// Graph has edge `parent` => `child`.
 	// Both are called when pushing a neighbor
 	// If forwards DFS: just visited a parent and pushing its child
 	// If backwards DFS: just visited a child and pushing its parent
-	UpdateParent *func(parent NodeT, child NodeT) NodeT
-	UpdateChild  *func(parent NodeT, child NodeT) NodeT
+	UpdateParent *func(g Graph[K, NodeT], parent NodeT, child NodeT) NodeT
+	UpdateChild  *func(g Graph[K, NodeT], parent NodeT, child NodeT) NodeT
 	// If child: UpdateChild is called first, then UpdateParent is called with the updated child.
 	// Else: UpdateParent is called first, then UpdateChild is called with the updated parent.
 	UpdateFirst ParentOrChild
@@ -159,7 +159,7 @@ type UpdatePathVertices[NodeT any] struct {
 
 // return updated parent or child
 func updateParentOrChild[K comparable, NodeT any](directed *directed[K, NodeT], parent NodeT, parentHash K, child NodeT, childHash K,
-	update_vertices UpdatePathVertices[NodeT], which ParentOrChild) (NodeT, error) {
+	update_vertices UpdatePathVertices[K, NodeT], which ParentOrChild) (NodeT, error) {
 
 	updateFunc := update_vertices.UpdateParent
 	updated := parent
@@ -171,7 +171,7 @@ func updateParentOrChild[K comparable, NodeT any](directed *directed[K, NodeT], 
 	}
 
 	if updateFunc != nil {
-		updated = (*(updateFunc))(parent, child)
+		updated = (*(updateFunc))(directed, parent, child)
 		updatedHash := directed.hash(updated)
 		if oldHash != updatedHash {
 			return updated, fmt.Errorf("DFS can only update path vertex if hash stays the same - old %v != new %v", oldHash, updatedHash)
@@ -185,7 +185,7 @@ func updateParentOrChild[K comparable, NodeT any](directed *directed[K, NodeT], 
 	return updated, nil
 }
 
-func updatePathVertices[K comparable, NodeT any](g Graph[K, NodeT], currentHash K, neighHash K, update_vertices UpdatePathVertices[NodeT],
+func updatePathVertices[K comparable, NodeT any](g Graph[K, NodeT], currentHash K, neighHash K, update_vertices UpdatePathVertices[K, NodeT],
 	direction Direction) error {
 	directed, ok := g.(*directed[K, NodeT])
 	if !ok {
@@ -239,7 +239,7 @@ func updatePathVertices[K comparable, NodeT any](g Graph[K, NodeT], currentHash 
 }
 
 // Do DFS from all roots if forwards, else all leaves
-func DFSAllStartingNodes[K comparable, T any](g Graph[K, T], visit func(K) bool, update_vertices UpdatePathVertices[T], all_paths bool, pretty_print bool,
+func DFSAllStartingNodes[K comparable, T any](g Graph[K, T], visit func(K) bool, update_vertices UpdatePathVertices[K, T], all_paths bool, pretty_print bool,
 	direction Direction) error {
 	var m map[K]map[K]Edge[K]
 	var err error
