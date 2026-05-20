@@ -107,6 +107,12 @@ type Graph[K comparable, T any] interface {
 	// be returned. If the vertex doesn't exist, ErrVertexNotFound is returned.
 	RemoveVertex(hash K) error
 
+	// Remove edges out and in to the vertex and return the removed edges in that order
+	RemoveVertexWithEdges(remove_hash K) ([]Edge[K], []Edge[K], error)
+
+	// Add edges out and in to the vertex
+	AddEdges(keep_hash K, outEdges []Edge[K], inEdges []Edge[K]) error
+
 	// AddEdge creates an edge between the source and the target vertex.
 	//
 	// If either vertex cannot be found, ErrVertexNotFound will be returned. If

@@ -37,61 +37,49 @@ func (d *directed[K, T]) AddVertex(value T, options ...func(*VertexProperties)) 
 	return d.store.AddVertex(hash, value, properties)
 }
 
-func (d *directed[K, T]) UpdateVertex(existingHash K, value T, options ...func(*VertexProperties)) error {
-	// Check old exists
-	if _, err := d.Vertex(existingHash); err != nil {
-		return err
-	}
-
-	// If changing hash, check new doesn't exist
-	newHash := d.hash(value)
-	if existingHash != newHash {
-		_, err := d.Vertex(newHash)
-		if !errors.Is(err, ErrVertexNotFound) {
-			return ErrVertexAlreadyExists
-		}
-	}
+func (d *directed[K, T]) RemoveVertexWithEdges(remove_hash K) ([]Edge[K], []Edge[K], error) {
+	var out_ret, in_ret []Edge[K]
 
 	// Remove old edges to/from old
 	adjacencyMap, err := d.AdjacencyMap()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	outEdges := adjacencyMap[existingHash]
+	outEdges := adjacencyMap[remove_hash]
 	predecessorMap, err := d.PredecessorMap()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	inEdges := predecessorMap[existingHash]
+	inEdges := predecessorMap[remove_hash]
 
 	for _, edge := range outEdges {
 		err = d.RemoveEdge(edge.Source, edge.Target)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
+		out_ret = append(out_ret, edge)
 	}
 	for _, edge := range inEdges {
 		err = d.RemoveEdge(edge.Source, edge.Target)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
+		in_ret = append(in_ret, edge)
 	}
 
-	// Replace vertex
-	if err := d.RemoveVertex(existingHash); err != nil {
-		return err
-	}
-	if err := d.AddVertex(value, options...); err != nil {
-		// Vertex will already "exist" if not changing hash - ok
-		if !errors.Is(err, ErrVertexAlreadyExists) {
-			return err
-		}
+	// Remove old vertex
+	err = d.RemoveVertex(remove_hash)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	// Add new edges, preserving properties
+	return out_ret, in_ret, nil
+}
+
+func (d *directed[K, T]) AddEdges(keep_hash K, outEdges []Edge[K], inEdges []Edge[K]) error {
 	for _, edge := range outEdges {
 		edge := Edge[K]{
-			Source:     newHash,
+			Source:     keep_hash,
 			Target:     edge.Target,
 			Properties: edge.Properties,
 		}
@@ -103,13 +91,46 @@ func (d *directed[K, T]) UpdateVertex(existingHash K, value T, options ...func(*
 	for _, edge := range inEdges {
 		edge := Edge[K]{
 			Source:     edge.Source,
-			Target:     newHash,
+			Target:     keep_hash,
 			Properties: edge.Properties,
 		}
 
 		if err := d.addEdge(edge.Source, edge.Target, edge); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func (d *directed[K, T]) UpdateVertex(existingHash K, value T, options ...func(*VertexProperties)) error {
+	// Check old vertex exists
+	if _, err := d.Vertex(existingHash); err != nil {
+		return err
+	}
+
+	// If changing hash, check new hash doesn't exist
+	newHash := d.hash(value)
+	if existingHash != newHash {
+		_, err := d.Vertex(newHash)
+		if !errors.Is(err, ErrVertexNotFound) {
+			return ErrVertexAlreadyExists
+		}
+	}
+
+	// Remove old vertex
+	out_edges, in_edges, err := d.RemoveVertexWithEdges(existingHash)
+	if err != nil {
+		return err
+	}
+
+	// Add new vertex
+	if err := d.AddVertex(value, options...); err != nil {
+		return err
+	}
+
+	// Add edges to new vertex
+	if err := d.AddEdges(newHash, out_edges, in_edges); err != nil {
+		return err
 	}
 
 	return nil

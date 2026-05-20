@@ -60,6 +60,13 @@ func (u *undirected[K, T]) RemoveVertex(hash K) error {
 	return u.store.RemoveVertex(hash)
 }
 
+func (d *undirected[K, T]) RemoveVertexWithEdges(remove_hash K) ([]Edge[K], []Edge[K], error) {
+	return nil, nil, nil
+}
+func (d *undirected[K, T]) AddEdges(keep_hash K, outEdges []Edge[K], inEdges []Edge[K]) error {
+	return nil
+}
+
 func (u *undirected[K, T]) AddEdge(sourceHash, targetHash K, options ...func(*EdgeProperties)) error {
 	if _, _, err := u.store.Vertex(sourceHash); err != nil {
 		return fmt.Errorf("could not find source vertex with hash %v: %w", sourceHash, err)

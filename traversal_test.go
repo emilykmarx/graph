@@ -66,7 +66,7 @@ func checkVertexValues(t *testing.T, test_name string, graph Graph[string, strin
 	}
 }
 
-// Also tests DFS backwards and DFSAllStartingNodes
+// Also tests DFS backwards, DFSAllStartingNodes, UpdateVertex
 func TestDFSUpdatePathVertices(t *testing.T) {
 	graph := New(Postfix, Directed())
 
