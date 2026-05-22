@@ -60,6 +60,10 @@ func (d *directed[K, T]) RemoveVertexWithEdges(remove_hash K) ([]Edge[K], []Edge
 		out_ret = append(out_ret, edge)
 	}
 	for _, edge := range inEdges {
+		// Edge to self => already removed above
+		if edge.Source == edge.Target {
+			continue
+		}
 		err = d.RemoveEdge(edge.Source, edge.Target)
 		if err != nil {
 			return nil, nil, err
