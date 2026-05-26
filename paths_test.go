@@ -60,7 +60,7 @@ func TestDirectedCreatesCycle(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		graph := New(IntHash, Directed())
+		graph := New(IntHash, nil, Directed())
 
 		for _, vertex := range test.vertices {
 			_ = graph.AddVertex(vertex)
@@ -135,7 +135,7 @@ func TestUndirectedCreatesCycle(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		graph := New(IntHash)
+		graph := New(IntHash, nil)
 
 		for _, vertex := range test.vertices {
 			_ = graph.AddVertex(vertex)
@@ -268,7 +268,7 @@ func TestDirectedShortestPath(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		graph := New(StringHash, Directed())
+		graph := New(StringHash, nil, Directed())
 		graph.(*directed[string, string]).traits.IsWeighted = test.isWeighted
 
 		for _, vertex := range test.vertices {
@@ -384,7 +384,7 @@ func TestUndirectedShortestPath(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		graph := New(StringHash)
+		graph := New(StringHash, nil)
 		graph.(*undirected[string, string]).traits.IsWeighted = test.isWeighted
 
 		for _, vertex := range test.vertices {
@@ -444,7 +444,7 @@ func TestDirectedStronglyConnectedComponents(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		graph := New(IntHash, Directed())
+		graph := New(IntHash, nil, Directed())
 
 		for _, vertex := range test.vertices {
 			_ = graph.AddVertex(vertex)
@@ -485,7 +485,7 @@ func TestUndirectedStronglyConnectedComponents(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		graph := New(IntHash)
+		graph := New(IntHash, nil)
 
 		sccs, err := StronglyConnectedComponents(graph)
 
@@ -516,7 +516,7 @@ func TestAllPathsBetween(t *testing.T) {
 			name: "directed",
 			args: args[int, int]{
 				g: func() Graph[int, int] {
-					g := New(IntHash, Directed())
+					g := New(IntHash, nil, Directed())
 					for i := 0; i <= 8; i++ {
 						_ = g.AddVertex(i)
 					}
@@ -549,7 +549,7 @@ func TestAllPathsBetween(t *testing.T) {
 			name: "undirected",
 			args: args[int, int]{
 				g: func() Graph[int, int] {
-					g := New(IntHash)
+					g := New(IntHash, nil)
 					for i := 0; i <= 8; i++ {
 						_ = g.AddVertex(i)
 					}
@@ -585,7 +585,7 @@ func TestAllPathsBetween(t *testing.T) {
 			name: "undirected (complex)",
 			args: args[int, int]{
 				g: func() Graph[int, int] {
-					g := New(IntHash)
+					g := New(IntHash, nil)
 					for i := 0; i <= 9; i++ {
 						_ = g.AddVertex(i)
 					}

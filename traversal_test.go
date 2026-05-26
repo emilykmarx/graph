@@ -18,7 +18,7 @@ type testdirected struct {
 }
 
 func directedGraph(t *testing.T, test_name string, test testdirected) Graph[int, int] {
-	graph := New(IntHash, Directed())
+	graph := New(IntHash, nil, Directed())
 
 	for _, vertex := range test.vertices {
 		_ = graph.AddVertex(vertex)
@@ -68,7 +68,7 @@ func checkVertexValues(t *testing.T, test_name string, graph Graph[string, strin
 
 // Also tests DFS backwards, DFSAllStartingNodes, UpdateVertex
 func TestDFSUpdatePathVertices(t *testing.T) {
-	graph := New(Postfix, Directed())
+	graph := New(Postfix, nil, Directed())
 
 	test_name := "DFS path info accumulation, backwards, and all starting nodes"
 	// Paths: a => b => c => e, a => b => d
@@ -335,7 +335,7 @@ func TestUndirectedDFS(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		graph := New(IntHash)
+		graph := New(IntHash, nil)
 
 		for _, vertex := range test.vertices {
 			_ = graph.AddVertex(vertex)
@@ -429,7 +429,7 @@ func TestDirectedBFS(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		graph := New(IntHash, Directed())
+		graph := New(IntHash, nil, Directed())
 
 		for _, vertex := range test.vertices {
 			_ = graph.AddVertex(vertex)
@@ -521,7 +521,7 @@ func TestUndirectedBFS(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		graph := New(IntHash)
+		graph := New(IntHash, nil)
 
 		for _, vertex := range test.vertices {
 			_ = graph.AddVertex(vertex)

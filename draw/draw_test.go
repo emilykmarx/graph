@@ -18,7 +18,7 @@ func TestGenerateDOT(t *testing.T) {
 		expected         description
 	}{
 		"3-vertex directed graph": {
-			graph:      graph.New(graph.StringHash, graph.Directed()),
+			graph:      graph.New(graph.StringHash, nil, graph.Directed()),
 			attributes: map[string]string{},
 			vertices:   []string{"1", "2", "3"},
 			edges: []graph.Edge[string]{
@@ -39,7 +39,7 @@ func TestGenerateDOT(t *testing.T) {
 			},
 		},
 		"3-vertex directed, weighted graph with weights and attributes": {
-			graph:      graph.New(graph.StringHash, graph.Directed(), graph.Weighted()),
+			graph:      graph.New(graph.StringHash, nil, graph.Directed(), graph.Weighted()),
 			attributes: map[string]string{},
 			vertices:   []string{"1", "2", "3"},
 			edges: []graph.Edge[string]{
@@ -76,7 +76,7 @@ func TestGenerateDOT(t *testing.T) {
 			},
 		},
 		"vertices with attributes": {
-			graph:      graph.New(graph.StringHash, graph.Directed(), graph.Weighted()),
+			graph:      graph.New(graph.StringHash, nil, graph.Directed(), graph.Weighted()),
 			attributes: map[string]string{},
 			vertices:   []string{"1", "2"},
 			vertexProperties: map[string]graph.VertexProperties{
@@ -123,7 +123,7 @@ func TestGenerateDOT(t *testing.T) {
 			},
 		},
 		"directed graph with attributes": {
-			graph: graph.New(graph.StringHash, graph.Directed()),
+			graph: graph.New(graph.StringHash, nil, graph.Directed()),
 			attributes: map[string]string{
 				"label":     "my-graph",
 				"normalize": "true",

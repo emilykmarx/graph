@@ -127,7 +127,7 @@ func TestDirectedUnion(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		g := New(IntHash, Directed())
+		g := New(IntHash, nil, Directed())
 
 		for _, vertex := range test.gVertices {
 			_ = g.AddVertex(vertex, copyVertexProperties(test.gVertexProperties[vertex]))
@@ -137,7 +137,7 @@ func TestDirectedUnion(t *testing.T) {
 			_ = g.AddEdge(copyEdge(edge))
 		}
 
-		h := New(IntHash, Directed())
+		h := New(IntHash, nil, Directed())
 
 		for _, vertex := range test.hVertices {
 			_ = h.AddVertex(vertex, copyVertexProperties(test.gVertexProperties[vertex]))

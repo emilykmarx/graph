@@ -3,6 +3,7 @@ package graph
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 )
 
 type undirected[K comparable, T any] struct {
@@ -23,6 +24,11 @@ func (u *undirected[K, T]) Traits() *Traits {
 	return u.traits
 }
 
+func (d *undirected[K, T]) Log() *slog.Logger {
+	return nil
+}
+func (d *undirected[K, T]) LogEdges(hash K) {}
+
 func (u *undirected[K, T]) AddVertex(value T, options ...func(*VertexProperties)) error {
 	hash := u.hash(value)
 
@@ -38,8 +44,7 @@ func (u *undirected[K, T]) AddVertex(value T, options ...func(*VertexProperties)
 	return u.store.AddVertex(hash, value, prop)
 }
 
-func (u *undirected[K, T]) UpdateVertex(existingHash K, value T, options ...func(*VertexProperties)) error {
-	return fmt.Errorf("UpdateVertex not implemented for undirected graphs (didn't bother copying directed implementaiton)")
+func (d *undirected[K, T]) UpdateVertex(existingHash K, value T, combineHash *K, options ...func(*VertexProperties)) {
 }
 
 func (u *undirected[K, T]) Vertex(hash K) (T, error) {
@@ -58,13 +63,6 @@ func (u *undirected[K, T]) VertexWithProperties(hash K) (T, VertexProperties, er
 
 func (u *undirected[K, T]) RemoveVertex(hash K) error {
 	return u.store.RemoveVertex(hash)
-}
-
-func (d *undirected[K, T]) RemoveVertexWithEdges(remove_hash K) ([]Edge[K], []Edge[K], error) {
-	return nil, nil, nil
-}
-func (d *undirected[K, T]) AddEdges(keep_hash K, outEdges []Edge[K], inEdges []Edge[K]) error {
-	return nil
 }
 
 func (u *undirected[K, T]) AddEdge(sourceHash, targetHash K, options ...func(*EdgeProperties)) error {

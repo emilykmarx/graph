@@ -1,22 +1,31 @@
 package graph
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"runtime"
+	"time"
 )
 
 type directed[K comparable, T any] struct {
 	hash   Hash[K, T]
 	traits *Traits
 	store  Store[K, T]
+	log    *slog.Logger
 }
 
-func newDirected[K comparable, T any](hash Hash[K, T], traits *Traits, store Store[K, T]) *directed[K, T] {
+func newDirected[K comparable, T any](hash Hash[K, T], traits *Traits, store Store[K, T], log *slog.Logger) *directed[K, T] {
 	return &directed[K, T]{
 		hash:   hash,
 		traits: traits,
 		store:  store,
+		log:    log,
 	}
+}
+func (d *directed[K, T]) Log() *slog.Logger {
+	return d.log
 }
 
 func (d *directed[K, T]) Traits() *Traits {
@@ -37,107 +46,188 @@ func (d *directed[K, T]) AddVertex(value T, options ...func(*VertexProperties)) 
 	return d.store.AddVertex(hash, value, properties)
 }
 
-func (d *directed[K, T]) RemoveVertexWithEdges(remove_hash K) ([]Edge[K], []Edge[K], error) {
-	var out_ret, in_ret []Edge[K]
+func Logf(log *slog.Logger, lvl slog.Level, format string, args ...any) {
+	if log == nil || !log.Enabled(context.Background(), lvl) {
+		return
+	}
+	var pcs [1]uintptr
+	runtime.Callers(2, pcs[:])
+	r := slog.NewRecord(time.Now(), lvl, fmt.Sprintf(format, args...), pcs[0])
+	_ = log.Handler().Handle(context.Background(), r)
+}
 
-	// Remove old edges to/from old
+// panic on error
+func (d *directed[K, T]) LogEdges(hash K) {
 	adjacencyMap, err := d.AdjacencyMap()
 	if err != nil {
-		return nil, nil, err
+		panic(err)
 	}
-	outEdges := adjacencyMap[remove_hash]
+	outEdges := adjacencyMap[hash]
 	predecessorMap, err := d.PredecessorMap()
 	if err != nil {
-		return nil, nil, err
+		panic(err)
 	}
-	inEdges := predecessorMap[remove_hash]
-
+	inEdges := predecessorMap[hash]
+	Logf(d.Log(), slog.LevelInfo, "out_edges[%v]:", hash)
 	for _, edge := range outEdges {
-		err = d.RemoveEdge(edge.Source, edge.Target)
-		if err != nil {
-			return nil, nil, err
-		}
-		out_ret = append(out_ret, edge)
+		Logf(d.Log(), slog.LevelInfo, "=> %v", edge.Target)
 	}
+	Logf(d.Log(), slog.LevelInfo, "in_edges[%v]:", hash)
 	for _, edge := range inEdges {
-		// Edge to self => already removed above
-		if edge.Source == edge.Target {
-			continue
-		}
-		err = d.RemoveEdge(edge.Source, edge.Target)
-		if err != nil {
-			return nil, nil, err
-		}
-		in_ret = append(in_ret, edge)
+		Logf(d.Log(), slog.LevelInfo, "%v =>", edge.Source)
 	}
-
-	// Remove old vertex
-	err = d.RemoveVertex(remove_hash)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return out_ret, in_ret, nil
 }
 
-func (d *directed[K, T]) AddEdges(keep_hash K, outEdges []Edge[K], inEdges []Edge[K]) error {
-	for _, edge := range outEdges {
-		edge := Edge[K]{
-			Source:     keep_hash,
-			Target:     edge.Target,
-			Properties: edge.Properties,
-		}
-
-		if err := d.addEdge(edge.Source, edge.Target, edge); err != nil {
-			return err
+func (d *directed[K, T]) combineWarn(edge Edge[K], existingHash K, combineHash *K) {
+	if combineHash != nil {
+		if (edge.Source == existingHash && edge.Target == *combineHash) ||
+			(edge.Source == *combineHash && edge.Target == existingHash) {
+			Logf(d.Log(), slog.LevelWarn, "Combining edge %+v into self edge", edge)
 		}
 	}
-	for _, edge := range inEdges {
-		edge := Edge[K]{
-			Source:     edge.Source,
-			Target:     keep_hash,
-			Properties: edge.Properties,
-		}
-
-		if err := d.addEdge(edge.Source, edge.Target, edge); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
-func (d *directed[K, T]) UpdateVertex(existingHash K, value T, options ...func(*VertexProperties)) error {
+// update edge source or target in place, if it's one of [existingHash, combineHash]
+func maybeUpdate[K comparable](hash *K, existingHash K, combineHash *K, newHash K) {
+	if *hash == existingHash || (combineHash != nil && *hash == *combineHash) {
+		*hash = newHash
+	}
+}
+
+// Update the vertex with hash `existingHash` to `value.`
+// `value` may have a different hash, if the new hash doesn't already exist.
+// Add `combineHash` vertex's edges to the new node, and remove `combineHash`.
+// The new node will have an edge to itself in these cases:
+// 1. existing or combine node had an edge to itself
+// 2. Had edge between existing and combine - log a warning
+// Panic on err.
+// NOT thread-safe.
+// Edge properties are preserved, but properties for the updated vertex must be passed in.
+func (d *directed[K, T]) UpdateVertex(existingHash K, value T, combineHash *K, options ...func(*VertexProperties)) {
+	newHash := d.hash(value)
+
+	c := "<nil>"
+	if combineHash != nil {
+		c = fmt.Sprintf("%v", *combineHash)
+	}
+	Logf(d.Log(), slog.LevelInfo, "Enter UpdateVertex(existingHash %v, value %+v, combineHash %v) - edges before:", existingHash, value, c)
+
+	d.LogEdges(existingHash)
+	if combineHash != nil {
+		d.LogEdges(*combineHash)
+	}
+
+	defer func() {
+		Logf(d.Log(), slog.LevelInfo, "Exit UpdateVertex(newHash %v) - edges after:", newHash)
+		d.LogEdges(newHash)
+	}()
+
 	// Check old vertex exists
 	if _, err := d.Vertex(existingHash); err != nil {
-		return err
+		panic(err)
 	}
-
-	// If changing hash, check new hash doesn't exist
-	newHash := d.hash(value)
-	if existingHash != newHash {
-		_, err := d.Vertex(newHash)
-		if !errors.Is(err, ErrVertexNotFound) {
-			return ErrVertexAlreadyExists
+	// Check vertex to be removed exists, and isn't the same vertex as existing
+	if combineHash != nil {
+		if _, err := d.Vertex(*combineHash); err != nil {
+			panic(err)
+		}
+		if existingHash == *combineHash {
+			panic("existing == remove")
 		}
 	}
 
-	// Remove old vertex
-	out_edges, in_edges, err := d.RemoveVertexWithEdges(existingHash)
-	if err != nil {
-		return err
+	// panic if new value hashes to some third node that already exists (neither existing nor combine) -
+	// unclear what caller wants
+	if newHash != existingHash && (combineHash == nil || newHash != *combineHash) {
+		_, err := d.Vertex(newHash)
+		if !errors.Is(err, ErrVertexNotFound) {
+			if err == nil {
+				panic(ErrVertexAlreadyExists)
+			} else {
+				panic(err)
+			}
+		}
 	}
 
-	// Add new vertex
+	// 1. Remove old edges (to/from existing and combine)
+	// (must remove edges before removing vertex, even if vertex will be kept with same hash)
+	oldHashes := []K{existingHash}
+	if combineHash != nil {
+		oldHashes = append(oldHashes, *combineHash)
+	}
+	var oldEdges []Edge[K]
+
+	for _, oldHash := range oldHashes {
+		adjacencyMap, err := d.AdjacencyMap()
+		if err != nil {
+			panic(err)
+		}
+		outEdges := adjacencyMap[oldHash]
+		predecessorMap, err := d.PredecessorMap()
+		if err != nil {
+			panic(err)
+		}
+		inEdges := predecessorMap[oldHash]
+
+		// OUT: SOURCE = old hash
+		for _, edge := range outEdges {
+			d.combineWarn(edge, existingHash, combineHash)
+
+			if err := d.RemoveEdge(edge.Source, edge.Target); err != nil {
+				Logf(d.Log(), slog.LevelError, "RemoveEdge %+v", edge) // log which edge failed
+				panic(err)
+			}
+
+			edge.Source = newHash // FROM new hash
+			maybeUpdate(&edge.Target, existingHash, combineHash, newHash)
+
+			oldEdges = append(oldEdges, edge)
+		}
+
+		// IN: TARGET = old hash
+		for _, edge := range inEdges {
+			d.combineWarn(edge, existingHash, combineHash)
+
+			if edge.Source == edge.Target {
+				// Edge to self => already handled above
+				// (loop over outEdges removes from both outEdges and inEdges, and appends edge that AddEdge() will add to both)
+				continue
+			}
+
+			if err := d.RemoveEdge(edge.Source, edge.Target); err != nil {
+				Logf(d.Log(), slog.LevelError, "RemoveEdge %+v", edge) // log which edge failed
+				panic(err)
+			}
+
+			edge.Target = newHash // TO new hash
+			maybeUpdate(&edge.Source, existingHash, combineHash, newHash)
+
+			oldEdges = append(oldEdges, edge)
+		}
+
+		// 2. Remove old vertex
+		if err := d.RemoveVertex(oldHash); err != nil {
+			panic(err)
+		}
+	}
+
+	// 3. Add new vertex
 	if err := d.AddVertex(value, options...); err != nil {
-		return err
+		panic(err)
 	}
 
-	// Add edges to new vertex
-	if err := d.AddEdges(newHash, out_edges, in_edges); err != nil {
-		return err
+	// 4. Add new edges
+	// (to new vertex, preserving properties)
+	for _, edge := range oldEdges {
+		if err := d.AddEdge(copyEdge(edge)); err != nil {
+			if !errors.Is(err, ErrEdgeAlreadyExists) {
+				Logf(d.Log(), slog.LevelError, "AddEdge %+v", edge) // log which edge failed
+				panic(err)
+			} else {
+				// may have dups, e.g. if combining 2 nodes with same edge in
+			}
+		}
 	}
-
-	return nil
 }
 
 func (d *directed[K, T]) AddVerticesFrom(g Graph[K, T]) error {
@@ -242,12 +332,12 @@ func (d *directed[K, T]) Edge(sourceHash, targetHash K) (Edge[T], error) {
 
 	sourceVertex, _, err := d.store.Vertex(sourceHash)
 	if err != nil {
-		return Edge[T]{}, err
+		return Edge[T]{}, fmt.Errorf("err getting vertex %v: %v", sourceHash, err.Error())
 	}
 
 	targetVertex, _, err := d.store.Vertex(targetHash)
 	if err != nil {
-		return Edge[T]{}, err
+		return Edge[T]{}, fmt.Errorf("err getting vertex %v: %v", targetHash, err.Error())
 	}
 
 	return Edge[T]{
@@ -280,7 +370,7 @@ func (d *directed[K, T]) UpdateEdge(source, target K, options ...func(properties
 
 func (d *directed[K, T]) RemoveEdge(source, target K) error {
 	if _, err := d.Edge(source, target); err != nil {
-		return err
+		return fmt.Errorf("failed to remove edge from %v to %v: %w", source, target, err)
 	}
 
 	if err := d.store.RemoveEdge(source, target); err != nil {

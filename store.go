@@ -75,8 +75,8 @@ type memoryStore[K comparable, T any] struct {
 
 	// outEdges and inEdges store all outgoing and ingoing edges for all vertices. For O(1) access,
 	// these edges themselves are stored in maps whose keys are the hashes of the target vertices.
-	outEdges map[K]map[K]Edge[K] // source -> target
-	inEdges  map[K]map[K]Edge[K] // target -> source
+	outEdges  map[K]map[K]Edge[K] // source -> target
+	inEdges   map[K]map[K]Edge[K] // target -> source
 	edgeCount int
 }
 

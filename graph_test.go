@@ -24,7 +24,7 @@ func TestNew(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		graph := New(IntHash, test.options...)
+		graph := New(IntHash, nil, test.options...)
 		actualType := reflect.TypeOf(graph)
 
 		if actualType != test.expectedType {
@@ -39,11 +39,11 @@ func TestNewLike(t *testing.T) {
 		vertices []int
 	}{
 		"new directed graph of integers": {
-			g:        New(IntHash, Directed()),
+			g:        New(IntHash, nil, Directed()),
 			vertices: []int{1, 2, 3},
 		},
 		"new undirected weighted graph of integers": {
-			g:        New(IntHash, Weighted()),
+			g:        New(IntHash, nil, Weighted()),
 			vertices: []int{1, 2, 3},
 		},
 	}

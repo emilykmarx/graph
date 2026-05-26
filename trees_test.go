@@ -15,7 +15,7 @@ func TestDirectedMinimumSpanningTree(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			graph := New(IntHash, Directed())
+			graph := New(IntHash, nil, Directed())
 
 			_, err := MinimumSpanningTree(graph)
 
@@ -87,7 +87,7 @@ func TestUndirectedMinimumSpanningTree(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			g := New(StringHash)
+			g := New(StringHash, nil)
 
 			for _, vertex := range test.vertices {
 				_ = g.AddVertex(vertex)
@@ -120,7 +120,7 @@ func TestDirectedMaximumSpanningTree(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			graph := New(IntHash, Directed())
+			graph := New(IntHash, nil, Directed())
 
 			_, err := MaximumSpanningTree(graph)
 
@@ -192,7 +192,7 @@ func TestUndirectedMaximumSpanningTree(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			g := New(StringHash)
+			g := New(StringHash, nil)
 
 			for _, vertex := range test.vertices {
 				_ = g.AddVertex(vertex)

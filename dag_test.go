@@ -50,7 +50,7 @@ func TestDirectedTopologicalSort(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		graph := New(IntHash, Directed())
+		graph := New(IntHash, nil, Directed())
 
 		err := buildGraph(&graph, test.vertices, test.edges)
 		if err != nil {
@@ -100,7 +100,7 @@ func TestUndirectedTopologicalSort(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		graph := New(IntHash)
+		graph := New(IntHash, nil)
 
 		order, err := TopologicalSort(graph)
 
@@ -158,7 +158,7 @@ func TestDirectedStableTopologicalSort(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		graph := New(IntHash, Directed())
+		graph := New(IntHash, nil, Directed())
 
 		err := buildGraph(&graph, test.vertices, test.edges)
 		if err != nil {
@@ -256,7 +256,7 @@ func TestDirectedTransitiveReduction(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		graph := New(StringHash, Directed())
+		graph := New(StringHash, nil, Directed())
 
 		err := buildGraph(&graph, test.vertices, test.edges)
 		if err != nil {
@@ -300,7 +300,7 @@ func TestUndirectedTransitiveReduction(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		graph := New(StringHash)
+		graph := New(StringHash, nil)
 
 		_, err := TransitiveReduction(graph)
 
@@ -312,8 +312,8 @@ func TestUndirectedTransitiveReduction(t *testing.T) {
 
 func TestVerifyTopologicalSort(t *testing.T) {
 	tests := map[string]struct {
-		vertices      []int
-		edges         []Edge[int]
+		vertices     []int
+		edges        []Edge[int]
 		invalidOrder []int
 	}{
 		"graph with 2 vertices": {
@@ -379,14 +379,14 @@ func TestVerifyTopologicalSort(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		graph := New[int, int](IntHash, Directed())
+		graph := New[int, int](IntHash, nil, Directed())
 
 		err := buildGraph(&graph, test.vertices, test.edges)
 		if err != nil {
 			t.Fatalf("%s: failed to construct graph: %s", name, err.Error())
 		}
 
-		var order[] int
+		var order []int
 
 		if len(test.invalidOrder) > 0 {
 			order = test.invalidOrder

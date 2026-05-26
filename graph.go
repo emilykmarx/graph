@@ -49,7 +49,10 @@
 // For detailed usage examples, take a look at the README.
 package graph
 
-import "errors"
+import (
+	"errors"
+	"log/slog"
+)
 
 var (
 	ErrVertexNotFound      = errors.New("vertex not found")
@@ -68,6 +71,9 @@ type Graph[K comparable, T any] interface {
 	// a graph using New.
 	Traits() *Traits
 
+	Log() *slog.Logger
+	LogEdges(hash K)
+
 	// AddVertex creates a new vertex in the graph. If the vertex already exists
 	// in the graph, ErrVertexAlreadyExists will be returned.
 	//
@@ -78,12 +84,8 @@ type Graph[K comparable, T any] interface {
 	//
 	AddVertex(value T, options ...func(*VertexProperties)) error
 
-	// UpdateVertex updates an existing vertex in the graph. Edge properties are preserved,
-	// but properties for the updated vertex must be passed in. If the vertex doesn't
-	// exist in the graph, ErrVertexNotFound will be returned.
-	// Ok for hash to stay the same, or to change if the new hash doesn't already exist.
-	// Likely not thread-safe.
-	UpdateVertex(hash K, value T, options ...func(*VertexProperties)) error
+	// See comment in directed.go
+	UpdateVertex(existingHash K, value T, combineHash *K, options ...func(*VertexProperties))
 
 	// AddVerticesFrom adds all vertices along with their properties from the
 	// given graph to the receiving graph.
@@ -106,12 +108,6 @@ type Graph[K comparable, T any] interface {
 	// Potential edges must be removed first. Otherwise, ErrVertexHasEdges will
 	// be returned. If the vertex doesn't exist, ErrVertexNotFound is returned.
 	RemoveVertex(hash K) error
-
-	// Remove edges out and in to the vertex and return the removed edges in that order
-	RemoveVertexWithEdges(remove_hash K) ([]Edge[K], []Edge[K], error)
-
-	// Add edges out and in to the vertex
-	AddEdges(keep_hash K, outEdges []Edge[K], inEdges []Edge[K]) error
 
 	// AddEdge creates an edge between the source and the target vertex.
 	//
@@ -266,13 +262,13 @@ type Hash[K comparable, T any] func(T) K
 //
 // The graph will use the default in-memory store for persisting vertices and
 // edges. To use a different [Store], use [NewWithStore].
-func New[K comparable, T any](hash Hash[K, T], options ...func(*Traits)) Graph[K, T] {
-	return NewWithStore(hash, newMemoryStore[K, T](), options...)
+func New[K comparable, T any](hash Hash[K, T], log *slog.Logger, options ...func(*Traits)) Graph[K, T] {
+	return NewWithStore(hash, newMemoryStore[K, T](), log, options...)
 }
 
 // NewWithStore creates a new graph same as [New] but uses the provided store
 // instead of the default memory store.
-func NewWithStore[K comparable, T any](hash Hash[K, T], store Store[K, T], options ...func(*Traits)) Graph[K, T] {
+func NewWithStore[K comparable, T any](hash Hash[K, T], store Store[K, T], log *slog.Logger, options ...func(*Traits)) Graph[K, T] {
 	var p Traits
 
 	for _, option := range options {
@@ -280,7 +276,7 @@ func NewWithStore[K comparable, T any](hash Hash[K, T], store Store[K, T], optio
 	}
 
 	if p.IsDirected {
-		return newDirected(hash, &p, store)
+		return newDirected(hash, &p, store, log)
 	}
 
 	return newUndirected(hash, &p, store)
@@ -311,7 +307,7 @@ func NewLike[K comparable, T any](g Graph[K, T]) Graph[K, T] {
 		hash = g.(*undirected[K, T]).hash
 	}
 
-	return New(hash, copyTraits)
+	return New(hash, nil, copyTraits)
 }
 
 // StringHash is a hashing function that accepts a string and uses that exact

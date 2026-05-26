@@ -176,10 +176,7 @@ func updateParentOrChild[K comparable, NodeT any](directed *directed[K, NodeT], 
 		if oldHash != updatedHash {
 			return updated, fmt.Errorf("DFS can only update path vertex if hash stays the same - old %v != new %v", oldHash, updatedHash)
 		}
-		err := directed.UpdateVertex(oldHash, updated, func(vp *VertexProperties) {})
-		if err != nil {
-			return updated, err
-		}
+		directed.UpdateVertex(oldHash, updated, nil, func(vp *VertexProperties) {})
 
 	}
 	return updated, nil

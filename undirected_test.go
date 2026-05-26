@@ -173,13 +173,13 @@ func TestUndirected_AddVerticesFrom(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			source := New(IntHash)
+			source := New(IntHash, nil)
 
 			for _, vertex := range test.vertices {
 				_ = source.AddVertex(vertex, copyVertexProperties(test.properties[vertex]))
 			}
 
-			g := New(IntHash)
+			g := New(IntHash, nil)
 
 			for _, vertex := range test.existingVertices {
 				_ = g.AddVertex(vertex)
@@ -504,7 +504,7 @@ func TestUndirected_AddEdgesFrom(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			source := New(IntHash)
+			source := New(IntHash, nil)
 
 			for _, vertex := range test.vertices {
 				_ = source.AddVertex(vertex)
@@ -514,7 +514,7 @@ func TestUndirected_AddEdgesFrom(t *testing.T) {
 				_ = source.AddEdge(copyEdge(edge))
 			}
 
-			g := New(IntHash)
+			g := New(IntHash, nil)
 
 			for _, vertex := range test.existingVertices {
 				_ = g.AddVertex(vertex)
@@ -576,7 +576,7 @@ func TestUndirected_RemoveVertex(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		graph := New(IntHash)
+		graph := New(IntHash, nil)
 
 		for _, vertex := range test.vertices {
 			_ = graph.AddVertex(vertex)
@@ -637,7 +637,7 @@ func TestUndirected_Edge(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		graph := New(IntHash)
+		graph := New(IntHash, nil)
 
 		for _, vertex := range test.vertices {
 			_ = graph.AddVertex(vertex)
@@ -748,7 +748,7 @@ func TestUndirected_Edges(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			g := New(IntHash)
+			g := New(IntHash, nil)
 
 			for _, vertex := range test.vertices {
 				_ = g.AddVertex(vertex)
@@ -816,7 +816,7 @@ func TestUndirected_UpdateEdge(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			g := New(IntHash)
+			g := New(IntHash, nil)
 
 			for _, vertex := range test.vertices {
 				_ = g.AddVertex(vertex)
@@ -885,7 +885,7 @@ func TestUndirected_RemoveEdge(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		graph := New(IntHash)
+		graph := New(IntHash, nil)
 
 		for _, vertex := range test.vertices {
 			_ = graph.AddVertex(vertex)
@@ -1121,7 +1121,7 @@ func TestUndirected_Clone(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		graph := New(IntHash)
+		graph := New(IntHash, nil)
 
 		for _, vertex := range test.vertices {
 			_ = graph.AddVertex(vertex, VertexWeight(vertex), VertexAttribute("color", "red"))
