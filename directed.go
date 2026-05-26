@@ -68,13 +68,13 @@ func (d *directed[K, T]) LogEdges(hash K) {
 		panic(err)
 	}
 	inEdges := predecessorMap[hash]
-	Logf(d.Log(), slog.LevelInfo, "out_edges[%v]:", hash)
+	Logf(d.Log(), slog.LevelDebug, "out_edges[%v]:", hash)
 	for _, edge := range outEdges {
-		Logf(d.Log(), slog.LevelInfo, "=> %v", edge.Target)
+		Logf(d.Log(), slog.LevelDebug, "=> %v", edge.Target)
 	}
-	Logf(d.Log(), slog.LevelInfo, "in_edges[%v]:", hash)
+	Logf(d.Log(), slog.LevelDebug, "in_edges[%v]:", hash)
 	for _, edge := range inEdges {
-		Logf(d.Log(), slog.LevelInfo, "%v =>", edge.Source)
+		Logf(d.Log(), slog.LevelDebug, "%v =>", edge.Source)
 	}
 }
 
@@ -110,7 +110,7 @@ func (d *directed[K, T]) UpdateVertex(existingHash K, value T, combineHash *K, o
 	if combineHash != nil {
 		c = fmt.Sprintf("%v", *combineHash)
 	}
-	Logf(d.Log(), slog.LevelInfo, "Enter UpdateVertex(existingHash %v, value %+v, combineHash %v) - edges before:", existingHash, value, c)
+	Logf(d.Log(), slog.LevelDebug, "Enter UpdateVertex(existingHash %v, value %+v, combineHash %v) - edges before:", existingHash, value, c)
 
 	d.LogEdges(existingHash)
 	if combineHash != nil {
@@ -118,7 +118,7 @@ func (d *directed[K, T]) UpdateVertex(existingHash K, value T, combineHash *K, o
 	}
 
 	defer func() {
-		Logf(d.Log(), slog.LevelInfo, "Exit UpdateVertex(newHash %v) - edges after:", newHash)
+		Logf(d.Log(), slog.LevelDebug, "Exit UpdateVertex(newHash %v) - edges after:", newHash)
 		d.LogEdges(newHash)
 	}()
 

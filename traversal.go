@@ -349,3 +349,29 @@ func BFSWithDepth[K comparable, T any](g Graph[K, T], start K, visit func(K, int
 
 	return nil
 }
+
+func RootsLeaves[K comparable, T any](g Graph[K, T]) ([]K, []K, error) {
+	var roots, leaves []K
+	m, err := g.AdjacencyMap() // outgoing
+	if err != nil {
+		return roots, leaves, fmt.Errorf("Could not get adjacency map: %w", err)
+	}
+
+	for hash, edges := range m {
+		if len(edges) == 0 {
+			leaves = append(leaves, hash)
+		}
+	}
+	m, err = g.PredecessorMap() // incoming
+	if err != nil {
+		return roots, leaves, fmt.Errorf("Could not get predecessor map: %w", err)
+	}
+
+	for hash, edges := range m {
+		if len(edges) == 0 {
+			roots = append(roots, hash)
+		}
+	}
+
+	return roots, leaves, nil
+}
