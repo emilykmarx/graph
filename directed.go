@@ -355,6 +355,10 @@ func (d *directed[K, T]) Edges() ([]Edge[K], error) {
 	return d.store.ListEdges()
 }
 
+func (d *directed[K, T]) Vertices() ([]T, error) {
+	return d.store.ListVerticesWithValues()
+}
+
 func (d *directed[K, T]) UpdateEdge(source, target K, options ...func(properties *EdgeProperties)) error {
 	existingEdge, err := d.store.Edge(source, target)
 	if err != nil {

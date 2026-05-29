@@ -98,6 +98,9 @@ type Graph[K comparable, T any] interface {
 	// doesn't exist.
 	Vertex(hash K) (T, error)
 
+	// Vertices returns a slice of all vertices in the graph
+	Vertices() ([]T, error)
+
 	// VertexWithProperties returns the vertex with the given hash along with
 	// its properties or ErrVertexNotFound if it doesn't exist.
 	VertexWithProperties(hash K) (T, VertexProperties, error)

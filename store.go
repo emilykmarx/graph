@@ -27,6 +27,7 @@ type Store[K comparable, T any] interface {
 
 	// ListVertices should return all vertices in the graph in a slice.
 	ListVertices() ([]K, error)
+	ListVerticesWithValues() ([]T, error)
 
 	// VertexCount should return the number of vertices in the graph. This should be equal to the
 	// length of the slice returned by ListVertices.
@@ -113,6 +114,18 @@ func (s *memoryStore[K, T]) ListVertices() ([]K, error) {
 	}
 
 	return hashes, nil
+}
+
+func (s *memoryStore[K, T]) ListVerticesWithValues() ([]T, error) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	vertices := []T{}
+
+	for _, v := range s.vertices {
+		vertices = append(vertices, v)
+	}
+
+	return vertices, nil
 }
 
 func (s *memoryStore[K, T]) VertexCount() (int, error) {
