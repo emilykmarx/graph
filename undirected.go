@@ -116,7 +116,7 @@ func (u *undirected[K, T]) AddEdgesFrom(g Graph[K, T]) error {
 	}
 
 	for _, edge := range edges {
-		if err := u.AddEdge(copyEdge(edge)); err != nil {
+		if err := u.AddEdge(CopyEdge(edge)); err != nil {
 			return fmt.Errorf("failed to add (%v, %v): %w", edge.Source, edge.Target, err)
 		}
 	}

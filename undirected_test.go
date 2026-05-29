@@ -511,7 +511,7 @@ func TestUndirected_AddEdgesFrom(t *testing.T) {
 			}
 
 			for _, edge := range test.edges {
-				_ = source.AddEdge(copyEdge(edge))
+				_ = source.AddEdge(CopyEdge(edge))
 			}
 
 			g := New(IntHash, nil)
@@ -521,7 +521,7 @@ func TestUndirected_AddEdgesFrom(t *testing.T) {
 			}
 
 			for _, edge := range test.existingEdges {
-				_ = g.AddEdge(copyEdge(edge))
+				_ = g.AddEdge(CopyEdge(edge))
 			}
 
 			err := g.AddEdgesFrom(source)
@@ -755,7 +755,7 @@ func TestUndirected_Edges(t *testing.T) {
 			}
 
 			for _, edge := range test.edges {
-				_ = g.AddEdge(copyEdge(edge))
+				_ = g.AddEdge(CopyEdge(edge))
 			}
 
 			edges, err := g.Edges()
@@ -823,10 +823,10 @@ func TestUndirected_UpdateEdge(t *testing.T) {
 			}
 
 			for _, edge := range test.edges {
-				_ = g.AddEdge(copyEdge(edge))
+				_ = g.AddEdge(CopyEdge(edge))
 			}
 
-			err := g.UpdateEdge(copyEdge(test.updateEdge))
+			err := g.UpdateEdge(CopyEdge(test.updateEdge))
 
 			if !errors.Is(err, test.expectedErr) {
 				t.Fatalf("expected error %v, got %v", test.expectedErr, err)

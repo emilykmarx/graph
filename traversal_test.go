@@ -1,7 +1,6 @@
 package graph
 
 import (
-	"errors"
 	"log"
 	"reflect"
 	"sort"
@@ -143,6 +142,7 @@ func TestDirectedDFS(t *testing.T) {
 		stopAtVertex:   -1,
 	}
 	cycle_testname := "traverse entire directed graph with cycle"
+
 	cycle_stop_early := cycle
 	cycle_stop_early.stopAtVertex = 2
 	cycle_stop_early.expectedVisits = [][]int{{1, 2}}
@@ -223,14 +223,8 @@ func TestDirectedDFS(t *testing.T) {
 			}
 
 			// 2. Check error
-			if (name == cycle_testname) && all_paths {
-				if !errors.Is(dfs_err, ErrCycleFound) {
-					t.Fatalf("%s: cycle not detected - instead, error was: %v", name, dfs_err)
-				}
-			} else {
-				if dfs_err != nil {
-					t.Fatalf("%s: Unexpected DFS error: %v", name, dfs_err)
-				}
+			if dfs_err != nil {
+				t.Fatalf("%s: Unexpected DFS error: %v", name, dfs_err)
 			}
 		}
 	}

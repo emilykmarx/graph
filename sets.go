@@ -44,7 +44,7 @@ func Union[K comparable, T any](g, h Graph[K, T]) (Graph[K, T], error) {
 				}
 			}
 
-			err = union.AddEdge(copyEdge(edge))
+			err = union.AddEdge(CopyEdge(edge))
 			if err != nil {
 				return union, fmt.Errorf("failed to add edge (%v, %v): %w", edge.Source, edge.Target, err)
 			}

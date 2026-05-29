@@ -34,9 +34,9 @@ import (
 //	}
 //
 // DFS is non-recursive and maintains a stack instead.
-// If `all_paths`: Visit all paths (meaning nodes reachable via multiple paths will be visited multiple times),
-// stopping only if there is a cycle.
-// If `all_paths` and a cycle is found: visit all paths but return error.
+// If `all_paths`: Visit all paths from root => leaf (or leaf => root, if Backwards) -
+// meaning nodes reachable via multiple paths will be visited multiple times.
+// Handle cycles as if the edge causing us to revisit a node didn't exist.
 // If `pretty_print`: print tabs indicating level of tree (before calling visit) - could be removed (caller can use update_vertices to do it themselves).
 // If backwards: visit in opposite order of edges.
 func DFS[K comparable, T any](g Graph[K, T], start K, visit func(K) bool, update_vertices UpdatePathVertices[K, T],
@@ -65,7 +65,6 @@ func DFS[K comparable, T any](g Graph[K, T], start K, visit func(K) bool, update
 	visited := make(map[K]bool)
 	// Nodes visited on the current path
 	visited_path := make(map[K]bool)
-	cycle := false
 
 	stack.push(stackNode{hash: start})
 
@@ -79,10 +78,6 @@ func DFS[K comparable, T any](g Graph[K, T], start K, visit func(K) bool, update
 		should_visit := !visited_ever
 		if all_paths {
 			should_visit = !visited_on_path
-			if !should_visit {
-				// Already visited this node on this path => cycle
-				cycle = true
-			}
 		}
 
 		if should_visit {
@@ -114,10 +109,6 @@ func DFS[K comparable, T any](g Graph[K, T], start K, visit func(K) bool, update
 				visited_path = make(map[K]bool)
 			}
 		}
-	}
-
-	if cycle {
-		return ErrCycleFound
 	}
 
 	return nil

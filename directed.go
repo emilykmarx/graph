@@ -219,7 +219,7 @@ func (d *directed[K, T]) UpdateVertex(existingHash K, value T, combineHash *K, o
 	// 4. Add new edges
 	// (to new vertex, preserving properties)
 	for _, edge := range oldEdges {
-		if err := d.AddEdge(copyEdge(edge)); err != nil {
+		if err := d.AddEdge(CopyEdge(edge)); err != nil {
 			if !errors.Is(err, ErrEdgeAlreadyExists) {
 				Logf(d.Log(), slog.LevelError, "AddEdge %+v", edge) // log which edge failed
 				panic(err)
@@ -316,7 +316,7 @@ func (d *directed[K, T]) AddEdgesFrom(g Graph[K, T]) error {
 	}
 
 	for _, edge := range edges {
-		if err := d.AddEdge(copyEdge(edge)); err != nil {
+		if err := d.AddEdge(CopyEdge(edge)); err != nil {
 			return fmt.Errorf("failed to add (%v, %v): %w", edge.Source, edge.Target, err)
 		}
 	}
@@ -490,12 +490,12 @@ func (d *directed[K, T]) createsCycle(source, target K) (bool, error) {
 	return CreatesCycle(Graph[K, T](d), source, target)
 }
 
-// copyEdge returns an argument list suitable for the Graph.AddEdge method. This
-// argument list is derived from the given edge, hence the name copyEdge.
+// CopyEdge returns an argument list suitable for the Graph.AddEdge method. This
+// argument list is derived from the given edge, hence the name CopyEdge.
 //
 // The last argument is a custom functional option that sets the edge properties
 // to the properties of the original edge.
-func copyEdge[K comparable](edge Edge[K]) (K, K, func(properties *EdgeProperties)) {
+func CopyEdge[K comparable](edge Edge[K]) (K, K, func(properties *EdgeProperties)) {
 	copyProperties := func(p *EdgeProperties) {
 		for k, v := range edge.Properties.Attributes {
 			p.Attributes[k] = v

@@ -72,7 +72,7 @@ func spanningTree[K comparable, T any](g Graph[K, T], maximum bool) (Graph[K, T]
 		if sourceRoot != targetRoot {
 			subtrees.union(sourceRoot, targetRoot)
 
-			if err = mst.AddEdge(copyEdge(edge)); err != nil {
+			if err = mst.AddEdge(CopyEdge(edge)); err != nil {
 				return nil, fmt.Errorf("failed to add edge (%v, %v): %w", edge.Source, edge.Target, err)
 			}
 		}
