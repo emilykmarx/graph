@@ -37,10 +37,9 @@ import (
 // If `all_paths`: Visit all paths from root => leaf (or leaf => root, if Backwards) -
 // meaning nodes reachable via multiple paths will be visited multiple times.
 // Handle cycles as if the edge causing us to revisit a node didn't exist.
-// If `pretty_print`: print tabs indicating level of tree (before calling visit) - could be removed (caller can use update_vertices to do it themselves).
 // If backwards: visit in opposite order of edges.
 func DFS[K comparable, T any](g Graph[K, T], start K, visit func(K) bool, update_vertices UpdatePathVertices[K, T],
-	all_paths bool, pretty_print bool, direction Direction) error {
+	all_paths bool, direction Direction) error {
 
 	var m map[K]map[K]Edge[K]
 	var err error
@@ -58,8 +57,7 @@ func DFS[K comparable, T any](g Graph[K, T], start K, visit func(K) bool, update
 	}
 
 	type stackNode struct {
-		hash         K
-		indent_level int
+		hash K
 	}
 	stack := newStack[stackNode]()
 	visited := make(map[K]bool)
@@ -71,7 +69,6 @@ func DFS[K comparable, T any](g Graph[K, T], start K, visit func(K) bool, update
 	for !stack.isEmpty() {
 		cur, _ := stack.pop()
 		currentHash := cur.hash
-		indent_level := cur.indent_level
 
 		_, visited_ever := visited[currentHash]
 		_, visited_on_path := visited_path[currentHash]
@@ -81,12 +78,6 @@ func DFS[K comparable, T any](g Graph[K, T], start K, visit func(K) bool, update
 		}
 
 		if should_visit {
-			if pretty_print {
-				for i := 0; i < indent_level; i++ {
-					fmt.Printf("\t")
-				}
-			}
-
 			// Stop traversing the graph if the visit function returns true.
 			if stop := visit(currentHash); stop {
 				break
@@ -96,7 +87,7 @@ func DFS[K comparable, T any](g Graph[K, T], start K, visit func(K) bool, update
 
 			leaf := true
 			for neighHash := range m[currentHash] {
-				stack.push(stackNode{hash: neighHash, indent_level: indent_level + 1}) // indent children by one more
+				stack.push(stackNode{hash: neighHash})
 				err = updatePathVertices(g, currentHash, neighHash, update_vertices, direction)
 				if err != nil {
 					return err
@@ -227,7 +218,7 @@ func updatePathVertices[K comparable, NodeT any](g Graph[K, NodeT], currentHash 
 }
 
 // Do DFS from all roots if forwards, else all leaves
-func DFSAllStartingNodes[K comparable, T any](g Graph[K, T], visit func(K) bool, update_vertices UpdatePathVertices[K, T], all_paths bool, pretty_print bool,
+func DFSAllStartingNodes[K comparable, T any](g Graph[K, T], visit func(K) bool, update_vertices UpdatePathVertices[K, T], all_paths bool,
 	direction Direction) error {
 	var m map[K]map[K]Edge[K]
 	var err error
@@ -243,7 +234,7 @@ func DFSAllStartingNodes[K comparable, T any](g Graph[K, T], visit func(K) bool,
 	for hash, edges := range m {
 		// If forwards: a root (no incoming edges), else a leaf
 		if len(edges) == 0 {
-			err = DFS(g, hash, visit, update_vertices, all_paths, pretty_print, direction)
+			err = DFS(g, hash, visit, update_vertices, all_paths, direction)
 			if err != nil {
 				return err
 			}
