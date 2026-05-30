@@ -15,6 +15,7 @@ type Store[K comparable, T any] interface {
 	// graph. If the vertex already exists, it is up to you whether ErrVertexAlreadyExists or no
 	// error should be returned.
 	AddVertex(hash K, value T, properties VertexProperties) error
+	UpdateVertex(k K, t T, p VertexProperties) error
 
 	// Vertex should return the vertex and vertex properties with the given hash value. If the
 	// vertex doesn't exist, ErrVertexNotFound should be returned.
@@ -96,6 +97,20 @@ func (s *memoryStore[K, T]) AddVertex(k K, t T, p VertexProperties) error {
 
 	if _, ok := s.vertices[k]; ok {
 		return ErrVertexAlreadyExists
+	}
+
+	s.vertices[k] = t
+	s.vertexProperties[k] = p
+
+	return nil
+}
+
+func (s *memoryStore[K, T]) UpdateVertex(k K, t T, p VertexProperties) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	if _, ok := s.vertices[k]; !ok {
+		return ErrVertexNotFound
 	}
 
 	s.vertices[k] = t

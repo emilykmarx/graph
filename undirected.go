@@ -27,6 +27,8 @@ func (u *undirected[K, T]) Traits() *Traits {
 func (d *undirected[K, T]) Log() *slog.Logger {
 	return nil
 }
+func (d *undirected[K, T]) SetLog(log *slog.Logger) {
+}
 func (d *undirected[K, T]) LogEdges(hash K) {}
 
 func (u *undirected[K, T]) AddVertex(value T, options ...func(*VertexProperties)) error {

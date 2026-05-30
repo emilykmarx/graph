@@ -27,6 +27,9 @@ func newDirected[K comparable, T any](hash Hash[K, T], traits *Traits, store Sto
 func (d *directed[K, T]) Log() *slog.Logger {
 	return d.log
 }
+func (d *directed[K, T]) SetLog(log *slog.Logger) {
+	d.log = log
+}
 
 func (d *directed[K, T]) Traits() *Traits {
 	return d.traits
@@ -57,7 +60,12 @@ func Logf(log *slog.Logger, lvl slog.Level, format string, args ...any) {
 }
 
 // panic on error
+// NOTE this is slow due to getting both the maps - thus no-op if debug logging not enabled
 func (d *directed[K, T]) LogEdges(hash K) {
+	if d.Log() == nil || !d.Log().Handler().Enabled(context.Background(), slog.LevelDebug) {
+		return
+	}
+
 	adjacencyMap, err := d.AdjacencyMap()
 	if err != nil {
 		panic(err)
@@ -105,6 +113,22 @@ func maybeUpdate[K comparable](hash *K, existingHash K, combineHash *K, newHash 
 // Edge properties are preserved, but properties for the updated vertex must be passed in.
 func (d *directed[K, T]) UpdateVertex(existingHash K, value T, combineHash *K, options ...func(*VertexProperties)) {
 	newHash := d.hash(value)
+	if existingHash == newHash && combineHash == nil {
+		// Optimization: If hash not changing and not combining, no need to change edges (requires getting AdjacencyMap/PredecessorMap)
+		properties := VertexProperties{
+			Weight:     0,
+			Attributes: make(map[string]string),
+		}
+
+		for _, option := range options {
+			option(&properties)
+		}
+		err := d.store.UpdateVertex(existingHash, value, properties)
+		if err != nil {
+			panic(err)
+		}
+		return
+	}
 
 	c := "<nil>"
 	if combineHash != nil {

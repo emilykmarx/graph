@@ -72,6 +72,7 @@ type Graph[K comparable, T any] interface {
 	Traits() *Traits
 
 	Log() *slog.Logger
+	SetLog(*slog.Logger)
 	LogEdges(hash K)
 
 	// AddVertex creates a new vertex in the graph. If the vertex already exists
