@@ -40,11 +40,13 @@ func Postfix(v string) string {
 // (Takes multiple possible expected for tests where result could depend both on order visited in original DFS, and order visited here)
 func checkVertexValues(t *testing.T, test_name string, graph Graph[string, string], expected_new_nodes [][]string) {
 	visited := []string{}
-	err := DFSAllStartingNodes(graph, func(hash string) bool {
+	visit := func(hash string) bool {
 		n, _ := graph.Vertex(hash)
 		visited = append(visited, n)
 		return false
-	}, UpdatePathVertices[string, string]{}, false, false, Forwards)
+	}
+	opts := DFSOpts[string, string]{Visit: &visit, All_paths: false, Direction: Forwards}
+	err := DFSAllStartingNodes(graph, opts)
 
 	if err != nil {
 		t.Errorf("%s: DFS to check vertices - %v", test_name, err.Error())
@@ -96,7 +98,8 @@ func TestDFSUpdatePathVertices(t *testing.T) {
 	update_vertices := UpdatePathVertices[string, string]{
 		UpdateChild: &UpdateChild,
 	}
-	err := DFSAllStartingNodes(graph, func(i string) bool { return false }, update_vertices, true, false, Forwards)
+	opts := DFSOpts[string, string]{Update_vertices: update_vertices, All_paths: true, Direction: Forwards}
+	err := DFSAllStartingNodes(graph, opts)
 	if err != nil {
 		t.Fatalf("%s: Unexpected error from DFS to push info up: %v", test_name, err)
 	}
@@ -114,7 +117,8 @@ func TestDFSUpdatePathVertices(t *testing.T) {
 	update_vertices = UpdatePathVertices[string, string]{
 		UpdateParent: &UpdateParent,
 	}
-	err = DFSAllStartingNodes(graph, func(i string) bool { return false }, update_vertices, true, false, Backwards)
+	opts = DFSOpts[string, string]{Update_vertices: update_vertices, All_paths: true, Direction: Backwards}
+	err = DFSAllStartingNodes(graph, opts)
 	if err != nil {
 		t.Fatalf("%s: Unexpected error from DFS to push info down: %v", test_name, err)
 	}
@@ -208,7 +212,8 @@ func TestDirectedDFS(t *testing.T) {
 				// If !all_paths: Only visit 4 on one path
 				test.expectedVisits = [][]int{{1, 2, 4, 3}, {1, 3, 4, 2}}
 			}
-			dfs_err := DFS(graph, test.startHash, visit, UpdatePathVertices[int, int]{}, all_paths, false, Forwards)
+			opts := DFSOpts[int, int]{Visit: &visit, All_paths: all_paths, Direction: Forwards}
+			dfs_err := DFS(graph, test.startHash, opts)
 
 			// 1. Check nodes visited
 			visit_ok := false
@@ -354,7 +359,8 @@ func TestUndirectedDFS(t *testing.T) {
 			return false
 		}
 
-		err := DFS(graph, test.startHash, visit, UpdatePathVertices[int, int]{}, false, false, Forwards)
+		opts := DFSOpts[int, int]{Visit: &visit, All_paths: false, Direction: Forwards}
+		err := DFS(graph, test.startHash, opts)
 		if err != nil {
 			t.Fatalf("%s: Unexpected error from DFS: %v", name, err)
 		}
